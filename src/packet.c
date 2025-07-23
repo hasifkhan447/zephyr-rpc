@@ -103,6 +103,7 @@ K_THREAD_DEFINE(dispatcher_thread_id, STACK_SIZE,
 
 // TODO: Make something to protect this
 K_MSGQ_DEFINE(recv_msgq, 10*sizeof(struct packet_data*), 10 , 1);
+K_MSGQ_DEFINE(send_msgq, 10*sizeof(struct packet_data*), 10 , 1);
 
 
 const char lorem_ipsum[] = "This is a test\0";
@@ -173,7 +174,7 @@ static int recv_packet_socket(struct packet_data *packet)
     LOG_DBG("Recieved message: %s", packet->recv_buffer);
     while (k_msgq_put(&recv_msgq, packet, K_NO_WAIT) != 0) {
       k_msgq_purge(&recv_msgq);
-      LOG_DBG("put it in");
+      LOG_DBG("put it in processing msgq");
     }
   } while (true);
 
@@ -182,14 +183,37 @@ static int recv_packet_socket(struct packet_data *packet)
 
 
 static void command_dispatcher() {
-  struct packet_data* packet;
+  struct packet_data* packet = 0x0;
   LOG_DBG("Started recieve thread");
+
 
   while (1) {
     k_msgq_get(&recv_msgq, packet, K_FOREVER);
     LOG_DBG("Recieved message (subthread): %s", packet->recv_buffer);
-  }
 
+
+    //Allocate Call 
+    Call* call_mcu = malloc(sizeof(Call));
+    char* buffer_mcu = malloc(sizeof(char[BUF_SIZE]));
+    Args* args_mcu = malloc(sizeof(Args));
+    Ret* ret_mcu = malloc(sizeof(Ret));
+    call_mcu->args = args_mcu;
+    call_mcu->ret = ret_mcu;
+
+    Deserialize(packet->recv_buffer, call_mcu);
+    Dispatcher(call_mcu);
+    Serialize(call_mcu, buffer_mcu);
+
+    while (k_msgq_put(&send_msgq, buffer_mcu, K_NO_WAIT) != 0) {
+      k_msgq_purge(&send_msgq);
+      LOG_DBG("put it in send msgq");
+    }
+
+    free(args_mcu);
+    free(ret_mcu);
+    free(call_mcu);
+
+  }
 }
 
 
@@ -225,12 +249,12 @@ static void recv_packet(void)
   }
 }
 
-static int send_packet_socket(struct packet_data *packet)
+static int send_packet_socket(struct packet_data* packet)
 {
   struct sockaddr_ll dst = { 0 };
   size_t send = 100U;
   int ret;
-
+  char* buffer_mcu;
   dst.sll_ifindex = net_if_get_by_iface(net_if_get_default());
 
   if (IS_ENABLED(CONFIG_NET_SAMPLE_ENABLE_PACKET_DGRAM)) {
@@ -255,8 +279,11 @@ static int send_packet_socket(struct packet_data *packet)
       break;
     }
 
+    //TODO: Pull from sending msgq, then give the signal to free memory (this needs to be handled up there, when msgq is read, free)
+    k_msgq_get(&send_msgq, buffer_mcu, K_FOREVER);
+
     /* Sending dummy data */
-    ret = sendto(packet->send_sock, lorem_ipsum, send, 0,
+    ret = sendto(packet->send_sock, buffer_mcu, send, 0,
                  (const struct sockaddr *)&dst,
                  sizeof(struct sockaddr_ll));
     if (ret < 0) {
@@ -267,6 +294,8 @@ static int send_packet_socket(struct packet_data *packet)
         LOG_DBG("Sent %zd bytes", send);
       }
     }
+
+    free(buffer_mcu);
 
     /* If we have received any data, flush it here in order to
      * not to leak memory in IP stack.
