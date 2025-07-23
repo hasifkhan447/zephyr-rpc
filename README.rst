@@ -32,7 +32,7 @@ Current situation
 *****************
 .. 1. Set up the python internally consistent example
 
-1. Send arbitrary packets to the MCU (read_motor, etc etc)
+1. Send arbitrary packets to the MCU (read_motor, etc etc) -> done
 2. Have MCU recieve it and just print something based on the message 
 3. Have MCU send back an arbitrary message 
 4. Integrate MSGQs

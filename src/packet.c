@@ -36,8 +36,6 @@
 // Serialize(buffer, call)
 //
 // send over IP stack -> we can send through the msgq
-//
-//
 
 
 
@@ -53,6 +51,14 @@ LOG_MODULE_REGISTER(net_pkt_sock_sample, LOG_LEVEL_DBG);
 #include <zephyr/net/ethernet.h>
 #include <zephyr/net/net_mgmt.h>
 #include "../include/rpc.h"
+#include "../include/packet.h"
+
+
+
+
+
+
+
 
 #define STACK_SIZE 1024
 #if defined(CONFIG_NET_TC_THREAD_COOPERATIVE)
@@ -73,6 +79,7 @@ struct packet_data {
   char recv_buffer[RECV_BUFFER_SIZE];
 };
 
+
 static struct packet_data sock_packet;
 static bool finish;
 static K_SEM_DEFINE(iface_up, 0, 1);
@@ -86,6 +93,17 @@ K_THREAD_DEFINE(receiver_thread_id, STACK_SIZE,
 K_THREAD_DEFINE(sender_thread_id, STACK_SIZE,
                 send_packet, NULL, NULL, NULL,
                 THREAD_PRIORITY, 0, -1);
+
+
+K_THREAD_DEFINE(dispatcher_thread_id, STACK_SIZE,
+                command_dispatcher, NULL, NULL, NULL,
+                THREAD_PRIORITY, 0, -1);
+
+
+
+// TODO: Make something to protect this
+K_MSGQ_DEFINE(recv_msgq, 10*sizeof(struct packet_data*), 10 , 1);
+
 
 const char lorem_ipsum[] = "This is a test\0";
 
@@ -151,11 +169,31 @@ static int recv_packet_socket(struct packet_data *packet)
     }
 
     LOG_DBG("Received %d bytes", received);
+
     LOG_DBG("Recieved message: %s", packet->recv_buffer);
+    while (k_msgq_put(&recv_msgq, packet, K_NO_WAIT) != 0) {
+      k_msgq_purge(&recv_msgq);
+      LOG_DBG("put it in");
+    }
   } while (true);
 
   return ret;
 }
+
+
+static void command_dispatcher() {
+  struct packet_data* packet;
+  LOG_DBG("Started recieve thread");
+
+  while (1) {
+    k_msgq_get(&recv_msgq, packet, K_FOREVER);
+    LOG_DBG("Recieved message (subthread): %s", packet->recv_buffer);
+  }
+
+}
+
+
+
 
 static void recv_packet(void)
 {
@@ -294,6 +332,9 @@ static void wait_for_interface(void)
   net_mgmt_del_event_callback(&iface_up_cb);
 }
 
+
+
+
 int main(void)
 {
   k_sem_init(&quit_lock, 0, K_SEM_MAX_LIMIT);
@@ -304,6 +345,7 @@ int main(void)
 
   k_thread_start(receiver_thread_id);
   k_thread_start(sender_thread_id);
+  k_thread_start(dispatcher_thread_id);
 
   k_sem_take(&quit_lock, K_FOREVER);
 
@@ -313,6 +355,7 @@ int main(void)
 
   k_thread_join(receiver_thread_id, K_FOREVER);
   k_thread_join(sender_thread_id, K_FOREVER);
+  k_thread_join(dispatcher_thread_id, K_FOREVER);
 
   if (sock_packet.recv_sock >= 0) {
     (void)close(sock_packet.recv_sock);
