@@ -1,7 +1,9 @@
 #include "../include/rpc.h"
+#include "zephyr/logging/log.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include "../include/helpers.h"
 
 
 //TODO: Is there any way I can make generating this Serialize easier? So I don't have to make the Args and Ret together? Is there any macro I can make?
@@ -56,7 +58,7 @@ void Dispatcher(Call* call) { // Only going to be run on the MCU
       break;
 
     case run_motor:   //currently just running it at a certain speed
-      extern int run_motor_fn(float motor_id, float pwm_frequency);
+      int run_motor_fn(float motor_id, float pwm_frequency);
       call->ret->err = run_motor_fn(call->args->arg1,call->args->arg2);
       break;
 
@@ -67,5 +69,7 @@ void Dispatcher(Call* call) { // Only going to be run on the MCU
     case finger_pos:
       // TODO:
       break;
+    default: 
+      call->ret->err = 404; // Err 25 magically now means that it wasn't able to find what it needed
   }
 }

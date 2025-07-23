@@ -170,8 +170,6 @@ static int recv_packet_socket(struct packet_data *packet)
     }
 
     LOG_DBG("Received %d bytes", received);
-
-    LOG_DBG("Recieved message: %s", packet->recv_buffer);
     while (k_msgq_put(&recv_msgq, packet, K_NO_WAIT) != 0) {
       k_msgq_purge(&recv_msgq);
       LOG_DBG("put it in processing msgq");
@@ -294,6 +292,8 @@ static int send_packet_socket(struct packet_data* packet)
         LOG_DBG("Sent %zd bytes", send);
       }
     }
+
+    LOG_DBG("Sent: %s", buffer_mcu);
 
     free(buffer_mcu);
 
