@@ -27,3 +27,20 @@ This sample can be built and executed on QEMU or native_sim board as
 described in :ref:`networking_with_host`.
 
 .. _`net-tools`: https://github.com/zephyrproject-rtos/net-tools
+
+Current situation
+*****************
+.. 1. Set up the python internally consistent example
+
+1. Send arbitrary packets to the MCU (read_motor, etc etc)
+2. Have MCU recieve it and just print something based on the message 
+3. Have MCU send back an arbitrary message 
+4. Integrate MSGQs
+
+
+.. 2. Set up sending (commands, results after running on own machine) from python/c side on nano 
+.. 3. Set up sending (commands, results after running on own machine) from python/c side on MCU
+.. 4. Set up recieving (commands) on nano -> buffers and the rest  
+.. 5. Set up recieving (commands) on MCU 
+
+

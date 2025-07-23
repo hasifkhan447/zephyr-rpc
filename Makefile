@@ -1,4 +1,5 @@
 arch = stm32f746g_disco
+# arch = qemu_x86
 install_point = ~/External/Documents/zephyr/zephyr/
 
 proj_dir = $(shell pwd)

@@ -4,6 +4,43 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+
+
+// Plan
+//
+// We need to do some work. The thread needs to accept buffer message through a msgq.
+// The send thread needs to send something, wait for response (recv thread), and then resend something.
+// 
+//
+// Calling on nano should be like this.
+// allocate cmd, call, ret, arg
+// Then we can do:
+// Serialize(buffer, MACRO(run_motor(1, 0.1);))
+//
+// And then send a packet over the IP stack
+
+
+
+// Now, on the microcontroller
+// recv waits to constantly recieve. When it does, puts the msg onto the recieved msgq and wakes up the thread that's waiting on the recieved msgq 
+//
+// That thread then deserializes the message, dispatches it
+//
+// allocate cmd, call, ret, arg
+// call = {cmd, arg, ret}
+// Deserialize(buffer, call)
+// Dispatch(call)
+//
+// Then it begins to send the data back
+//
+// Serialize(buffer, call)
+//
+// send over IP stack -> we can send through the msgq
+//
+//
+
+
+
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(net_pkt_sock_sample, LOG_LEVEL_DBG);
 
@@ -15,6 +52,7 @@ LOG_MODULE_REGISTER(net_pkt_sock_sample, LOG_LEVEL_DBG);
 #include <zephyr/net/socket.h>
 #include <zephyr/net/ethernet.h>
 #include <zephyr/net/net_mgmt.h>
+#include "../include/rpc.h"
 
 #define STACK_SIZE 1024
 #if defined(CONFIG_NET_TC_THREAD_COOPERATIVE)
