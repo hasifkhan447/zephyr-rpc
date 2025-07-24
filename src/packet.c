@@ -179,11 +179,17 @@ static int recv_packet_socket(struct packet_data *packet)
       break;
     }
 
-
     LOG_DBG("Received %d bytes", received);
+
+
+
+
+
+
+
     LOG_DBG("Packet is at address: %p", packet);
     PrintSerialized(packet->recv_buffer);
-    while (k_msgq_put(&recv_msgq, &packet, K_NO_WAIT) != 0) {
+    while (k_msgq_put(&recv_msgq, &packet, K_NO_WAIT) != 0) { 
       k_msgq_purge(&recv_msgq);
       LOG_INF("put it in processing msgq");
     }
@@ -255,6 +261,19 @@ static void command_dispatcher() {
     LOG_DBG("call_mcu->function_enum (buffer): %d", *(Command*)buffer_mcu);
     LOG_DBG("call_mcu->args: %p", (void*)call_mcu->args);
     LOG_DBG("call_mcu->ret: %p", (void*)call_mcu->ret);
+
+
+    // for (int i = 0; i < (BUF_SIZE); ++i) {
+    //   printk("%02X ", (unsigned char)buffer_mcu[i]);
+    // }
+    // printk("\n");
+
+
+
+
+
+
+
     Deserialize(buffer_mcu, call_mcu);
     LOG_DBG("Sent to dispatch");
     Dispatcher(call_mcu);
