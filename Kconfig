@@ -29,3 +29,7 @@ config NET_SAMPLE_DESTINATION_ADDR
 	  Where to send the Ethernet frames.
 
 source "Kconfig.zephyr"
+
+CONFIG_NEWLIB_LIBC=y
+CONFIG_NEWLIB_LIBC_FLOAT_PRINTF=y
+# CONFIG_CBPRINTF_FP_SUPPORT=y

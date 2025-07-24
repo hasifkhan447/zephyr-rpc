@@ -51,6 +51,7 @@ LOG_MODULE_REGISTER(net_pkt_sock_sample, LOG_LEVEL_DBG);
 #include <zephyr/net/net_mgmt.h>
 #include "../include/rpc.h"
 #include "../include/packet.h"
+#include "../include/helpers.h"
 
 
 
@@ -65,7 +66,7 @@ LOG_MODULE_REGISTER(net_pkt_sock_sample, LOG_LEVEL_DBG);
 #else
 #define THREAD_PRIORITY K_PRIO_PREEMPT(8)
 #endif
-#define RECV_BUFFER_SIZE 1280
+#define RECV_BUFFER_SIZE BUF_SIZE
 #define WAIT_TIME CONFIG_NET_SAMPLE_SEND_WAIT_TIME
 
 #define FLOOD (CONFIG_NET_SAMPLE_SEND_WAIT_TIME ? 0 : 1)
@@ -102,10 +103,20 @@ K_THREAD_DEFINE(dispatcher_thread_id, STACK_SIZE,
 
 // TODO: Make something to protect this
 K_MSGQ_DEFINE(recv_msgq, 10*sizeof(struct packet_data*), 10 , 1);
-K_MSGQ_DEFINE(send_msgq, 10*sizeof(struct packet_data*), 10 , 1);
+K_MSGQ_DEFINE(send_msgq, 10*sizeof(char*), 10 , 1);
 
 
 const char lorem_ipsum[] = "This is a test\0";
+
+
+void PrintSerialized(const char* buffer) {
+
+  LOG_DBG("%d %f %f %f %f %f %f %d\n", *(Command*)buffer, *(float*)(buffer+32),*(float*)(buffer+64), *(float*)(buffer+96), *(float*)(buffer+128), *(float*)(buffer+164), *(float*)(buffer+192), *(int*)(buffer+224));
+
+}
+
+
+
 
 static void quit(void)
 {
@@ -169,13 +180,44 @@ static int recv_packet_socket(struct packet_data *packet)
     }
 
     LOG_DBG("Received %d bytes", received);
-    while (k_msgq_put(&recv_msgq, packet, K_NO_WAIT) != 0) {
+    while (k_msgq_put(&recv_msgq, &packet, K_NO_WAIT) != 0) {
       k_msgq_purge(&recv_msgq);
-      LOG_DBG("put it in processing msgq");
+      LOG_INF("put it in processing msgq");
     }
   } while (true);
 
   return ret;
+}
+
+
+void Dispatcher(Call* call) {
+  LOG_INF("Entering dispatcher");
+
+  switch(call->function_enum) {
+    case read_sensor:
+      //TODO: extern void read_sensor()
+      //
+      // Assign its output to ret and then reserialize to the other end .
+      break;
+
+    case run_motor:   //currently just running it at a certain speed
+      call->ret->err = run_motor_fn(call->args->arg1,call->args->arg2);
+      LOG_DBG("Hit case run motor");
+      break;
+
+    case pid_to_position:
+      // TODO: 
+      break;
+
+    case finger_pos:
+      // TODO:
+      break;
+    default:
+      LOG_DBG("Hit case default");
+      break;
+
+  }
+
 }
 
 
@@ -185,23 +227,32 @@ static void command_dispatcher() {
 
 
   while (1) {
-    k_msgq_get(&recv_msgq, packet, K_FOREVER);
+    k_msgq_get(&recv_msgq, &packet, K_FOREVER);
     LOG_DBG("Recieved message (subthread): %s", packet->recv_buffer);
-
 
     //Allocate Call 
     Call* call_mcu = malloc(sizeof(Call));
     char* buffer_mcu = malloc(sizeof(char[BUF_SIZE]));
+
+    LOG_DBG("Creating MCU buffer from packet");
+
+    memcpy(buffer_mcu, packet->recv_buffer, sizeof(packet->recv_buffer));
+
+
     Args* args_mcu = malloc(sizeof(Args));
     Ret* ret_mcu = malloc(sizeof(Ret));
     call_mcu->args = args_mcu;
     call_mcu->ret = ret_mcu;
 
-    Deserialize(packet->recv_buffer, call_mcu);
+    PrintSerialized(buffer_mcu);
+
+    LOG_DBG("Sent to deser");
+    Deserialize(buffer_mcu, call_mcu);
+    LOG_DBG("Sent to dispatch");
     Dispatcher(call_mcu);
     Serialize(call_mcu, buffer_mcu);
 
-    while (k_msgq_put(&send_msgq, buffer_mcu, K_NO_WAIT) != 0) {
+    while (k_msgq_put(&send_msgq, &buffer_mcu, K_NO_WAIT) != 0) {
       k_msgq_purge(&send_msgq);
       LOG_DBG("put it in send msgq");
     }
@@ -277,7 +328,7 @@ static int send_packet_socket(struct packet_data* packet)
     }
 
     //TODO: Pull from sending msgq, then give the signal to free memory (this needs to be handled up there, when msgq is read, free)
-    k_msgq_get(&send_msgq, buffer_mcu, K_FOREVER);
+    k_msgq_get(&send_msgq, &buffer_mcu, K_FOREVER);
 
     /* Sending dummy data */
     ret = sendto(packet->send_sock, buffer_mcu, send, 0,
@@ -292,7 +343,7 @@ static int send_packet_socket(struct packet_data* packet)
       }
     }
 
-    LOG_DBG("Sent: %s", buffer_mcu);
+    PrintSerialized(buffer_mcu);
 
     free(buffer_mcu);
 
