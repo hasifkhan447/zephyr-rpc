@@ -44,7 +44,6 @@ LOG_MODULE_REGISTER(net_pkt_sock_sample, LOG_LEVEL_DBG);
 
 #include <zephyr/kernel.h>
 #include <errno.h>
-#include <stdio.h>
 
 #include <zephyr/misc/lorem_ipsum.h>
 #include <zephyr/net/socket.h>
