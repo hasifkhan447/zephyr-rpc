@@ -260,7 +260,15 @@ static void command_dispatcher() {
     LOG_DBG("buffer_mcu: %p call_mcu: %p", (void*)buffer_mcu, (void*)call_mcu);
     LOG_DBG("call_mcu->function_enum (buffer): %d", *(Command*)buffer_mcu);
     LOG_DBG("call_mcu->args: %p", (void*)call_mcu->args);
+    LOG_DBG("call_mcu->args->arg1: %f", call_mcu->args->arg1);
+    LOG_DBG("call_mcu->args->arg2: %f", call_mcu->args->arg2);
+    LOG_DBG("call_mcu->args->arg3: %f", call_mcu->args->arg3);
     LOG_DBG("call_mcu->ret: %p", (void*)call_mcu->ret);
+    LOG_DBG("call_mcu->ret->ret1: %f", call_mcu->ret->arg1);
+    LOG_DBG("call_mcu->ret->ret2: %f", call_mcu->ret->arg2);
+    LOG_DBG("call_mcu->ret->ret3: %f", call_mcu->ret->arg3);
+    LOG_DBG("call_mcu->ret->err: %d", call_mcu->ret->err);
+
 
 
     // for (int i = 0; i < (BUF_SIZE); ++i) {
