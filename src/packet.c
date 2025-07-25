@@ -168,13 +168,13 @@ static int recv_packet_socket(struct packet_data *packet)
       break;
     }
 
-    LOG_DBG("Received %d bytes", received);
+    // LOG_DBG("Received %d bytes", received);
 
-    LOG_DBG("Packet is at address: %p", packet);
-    PrintSerialized(packet->recv_buffer);
+    // LOG_DBG("Packet is at address: %p", packet);
+    // PrintSerialized(packet->recv_buffer);
     while (k_msgq_put(&recv_msgq, &packet, K_NO_WAIT) != 0) { 
       k_msgq_purge(&recv_msgq);
-      LOG_INF("put it in processing msgq");
+      // LOG_INF("put it in processing msgq");
     }
   } while (true);
 
@@ -237,20 +237,20 @@ static void command_dispatcher() {
     call_mcu->args = args_mcu;
     call_mcu->ret = ret_mcu;
 
-    PrintSerialized(buffer_mcu);
+    // PrintSerialized(buffer_mcu);
 
-    LOG_DBG("Sent to deser");
-    LOG_DBG("buffer_mcu: %p call_mcu: %p", (void*)buffer_mcu, (void*)call_mcu);
-    LOG_DBG("call_mcu->function_enum (buffer): %d", *(Command*)buffer_mcu);
-    LOG_DBG("call_mcu->args: %p", (void*)call_mcu->args);
-    LOG_DBG("call_mcu->args->arg1: %f", call_mcu->args->arg1);
-    LOG_DBG("call_mcu->args->arg2: %f", call_mcu->args->arg2);
-    LOG_DBG("call_mcu->args->arg3: %f", call_mcu->args->arg3);
-    LOG_DBG("call_mcu->ret: %p", (void*)call_mcu->ret);
-    LOG_DBG("call_mcu->ret->ret1: %f", call_mcu->ret->arg1);
-    LOG_DBG("call_mcu->ret->ret2: %f", call_mcu->ret->arg2);
-    LOG_DBG("call_mcu->ret->ret3: %f", call_mcu->ret->arg3);
-    LOG_DBG("call_mcu->ret->err: %d", call_mcu->ret->err);
+    // LOG_DBG("Sent to deser");
+    // LOG_DBG("buffer_mcu: %p call_mcu: %p", (void*)buffer_mcu, (void*)call_mcu);
+    // LOG_DBG("call_mcu->function_enum (buffer): %d", *(Command*)buffer_mcu);
+    // LOG_DBG("call_mcu->args: %p", (void*)call_mcu->args);
+    // LOG_DBG("call_mcu->args->arg1: %f", call_mcu->args->arg1);
+    // LOG_DBG("call_mcu->args->arg2: %f", call_mcu->args->arg2);
+    // LOG_DBG("call_mcu->args->arg3: %f", call_mcu->args->arg3);
+    // LOG_DBG("call_mcu->ret: %p", (void*)call_mcu->ret);
+    // LOG_DBG("call_mcu->ret->ret1: %f", call_mcu->ret->arg1);
+    // LOG_DBG("call_mcu->ret->ret2: %f", call_mcu->ret->arg2);
+    // LOG_DBG("call_mcu->ret->ret3: %f", call_mcu->ret->arg3);
+    // LOG_DBG("call_mcu->ret->err: %d", call_mcu->ret->err);
 
 
 
@@ -271,22 +271,21 @@ static void command_dispatcher() {
 
     Deserialize(buffer_mcu, call_mcu);
 
+    if (call_mcu->function_enum < last)  {
+      LOG_DBG("Sent to dispatch");
+      Dispatcher(call_mcu);
+      fflush(stdout);
+      LOG_DBG("Reserializing");
+      Serialize(call_mcu, buffer_mcu);
 
+      PrintSerialized(buffer_mcu);
 
-
-
-
-
-
-    LOG_DBG("Sent to dispatch");
-    Dispatcher(call_mcu);
-    fflush(stdout);
-    LOG_DBG("Reserializing");
-    Serialize(call_mcu, buffer_mcu);
-
-    while (k_msgq_put(&send_msgq, &buffer_mcu, K_NO_WAIT) != 0) {
-      k_msgq_purge(&send_msgq);
-      LOG_DBG("put it in send msgq");
+      while (k_msgq_put(&send_msgq, &buffer_mcu, K_NO_WAIT) != 0) {
+        k_msgq_purge(&send_msgq);
+        LOG_DBG("put it in send msgq");
+      }
+    } else {
+      free(buffer_mcu);
     }
 
     free(args_mcu);
