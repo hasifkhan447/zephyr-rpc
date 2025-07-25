@@ -54,13 +54,7 @@ LOG_MODULE_REGISTER(net_pkt_sock_sample, LOG_LEVEL_DBG);
 #include "../include/helpers.h"
 
 
-
-
-
-
-
-
-#define STACK_SIZE 1024
+#define STACK_SIZE 2056
 #if defined(CONFIG_NET_TC_THREAD_COOPERATIVE)
 #define THREAD_PRIORITY K_PRIO_COOP(CONFIG_NUM_COOP_PRIORITIES - 1)
 #else
@@ -106,16 +100,11 @@ K_MSGQ_DEFINE(recv_msgq, sizeof(struct packet_data*), 10 , 1);
 K_MSGQ_DEFINE(send_msgq, sizeof(char*), 10 , 1);
 
 
-const char lorem_ipsum[] = "This is a test\0";
-
-
 void PrintSerialized(const char* buffer) {
 
   LOG_DBG("%d %f %f %f %f %f %f %d\n", *(Command*)buffer, *(float*)(buffer+32),*(float*)(buffer+64), *(float*)(buffer+96), *(float*)(buffer+128), *(float*)(buffer+164), *(float*)(buffer+192), *(int*)(buffer+224));
 
 }
-
-
 
 
 static void quit(void)
@@ -180,12 +169,6 @@ static int recv_packet_socket(struct packet_data *packet)
     }
 
     LOG_DBG("Received %d bytes", received);
-
-
-
-
-
-
 
     LOG_DBG("Packet is at address: %p", packet);
     PrintSerialized(packet->recv_buffer);
@@ -271,6 +254,10 @@ static void command_dispatcher() {
 
 
 
+
+
+
+
     // for (int i = 0; i < (BUF_SIZE); ++i) {
     //   printk("%02X ", (unsigned char)buffer_mcu[i]);
     // }
@@ -283,6 +270,14 @@ static void command_dispatcher() {
 
 
     Deserialize(buffer_mcu, call_mcu);
+
+
+
+
+
+
+
+
     LOG_DBG("Sent to dispatch");
     Dispatcher(call_mcu);
     fflush(stdout);
@@ -337,7 +332,7 @@ static void recv_packet(void)
 static int send_packet_socket(struct packet_data* packet)
 {
   struct sockaddr_ll dst = { 0 };
-  size_t send = 100U;
+  size_t send = 256U;
   int ret;
   char* buffer_mcu;
   dst.sll_ifindex = net_if_get_by_iface(net_if_get_default());
